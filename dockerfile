@@ -1,9 +1,17 @@
-FROM python:3.9-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . /app
-RUN pip install --no-cache-dir -r requirements.txt
-EXPOSE 8000
-ENV NAME Wisecow
-CMD ["python", "app.py"]
+# Use the official Node.js image.
+FROM node:slim
+
+# Set the working directory.
+WORKDIR /application
+
+# Copy package.json and package-lock.json.
+COPY . /application
+
+# Install dependencies.
+RUN npm install
+
+# Expose the application port.
+EXPOSE 3000
+
+# Command to run the application.
+CMD node app.js
