@@ -1,9 +1,12 @@
-FROM python:3.9-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . /app
-RUN pip install --no-cache-dir -r requirements.txt
-EXPOSE 8000
-ENV NAME Wisecow
-CMD ["python", "app.py"]
+apiVersion: v1
+kind: Service
+metadata:
+  name: wisecow-service
+spec:
+  type: NodePort
+  ports:
+    - port: 3000
+      targetPort: 3000
+      nodePort: 30001
+  selector:
+    app: wisecow
