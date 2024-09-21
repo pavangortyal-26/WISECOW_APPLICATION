@@ -4,46 +4,42 @@
 
 2. **Write Dockerfile**:
     ```Dockerfile
-    # Use an official Python runtime as a parent image
-    FROM python:3.9-slim
+    # Use a base image that matches your application's needs (e.g., Node.js, Python)
+    FROM node:14
 
-    # Set the working directory in the container
-    WORKDIR /app
+    # Set the working directory
+    WORKDIR /usr/src/app
 
-    # Copy the current directory contents into the container at /app
-    COPY . /app
+   # Copy package.json and install dependencies
+   COPY package*.json ./
+   RUN npm install
 
-    # Install any needed packages specified in requirements.txt
-    RUN pip install --no-cache-dir -r requirements.txt
+   # Copy the rest of the application code
+   COPY . .
 
-    # Make port 80 available to the world outside this container
-    EXPOSE 80
+   # Expose the port the app runs on
+   EXPOSE 3000
 
-    # Define environment variable
-    ENV NAME Wisecow
+   # Command to run the application
+   CMD ["npm", "start"]
 
-    # Run app.py when the container launches
-    CMD ["python", "app.py"]
-    ```
 3. **Build the Docker image**:
     ```bash
     docker build -t wisecow-app .
     ```
 4. **Test the Docker image locally**:
     ```bash
-    docker run -p 8080:80 wisecow-app
+    docker run -p 3000:3000 wisecow-app
     ```
 
 ## Kubernetes Deployment
 
-1. **Create Deployment YAML (`wisecow-deployment.yaml`)**:
+1. **Create Deployment YAML (`wisecow_app-deployment.yaml`)**:
     ```yaml
     apiVersion: apps/v1
     kind: Deployment
     metadata:
-      name: wisecow-deployment
-      labels:
-        app: wisecow
+      name: wisecow-app
     spec:
       replicas: 1
       selector:
@@ -55,30 +51,30 @@
             app: wisecow
         spec:
           containers:
-          - name: wisecow
-            image: <your-container-registry>/wisecow-app:latest
+          - name: wisecow-container
+            image: wisecow-app:latest
             ports:
-            - containerPort: 80
+            - containerPort: 3000    
     ```
-2. **Create Service YAML (`wisecow-service.yaml`)**:
+2. **Create Service YAML (`wisecow_app-service.yaml`)**:
     ```yaml
     apiVersion: v1
     kind: Service
     metadata:
       name: wisecow-service
     spec:
+      TYPE: NodePort
+      ports:
+      - port: 3000
+        targetPort: 3000
+        nodeport: 30001
       selector:
         app: wisecow
-      ports:
-      - protocol: TCP
-        port: 80
-        targetPort: 80
-      type: LoadBalancer
     ```
 3. **Apply the manifest files**:
     ```bash
-    kubectl apply -f wisecow-deployment.yaml
-    kubectl apply -f wisecow-service.yaml
+    kubectl apply -f deployment.yaml
+    kubectl apply -f service.yaml
     ```
 
 ## Continuous Integration and Deployment (CI/CD)
@@ -99,27 +95,37 @@
          steps:
          - name: Checkout code
            uses: actions/checkout@v2
-         - name: Login to Container Registry
-           uses: docker/login-action@v1
+     
+         - name: Set up Docker Buildx
+           uses: docker/setuo-login-action@v1
+          
+         - name: Build and push Docker image
+           uses: docker/build-push-action@v2
            with:
-             username: ${{ secrets.REGISTRY_USERNAME }}
-             password: ${{ secrets.REGISTRY_PASSWORD }}
-         - name: Build Docker image
-           run: docker build -t <your-container-registry>/wisecow-app:latest .
-         - name: Push Docker image
-           run: docker push <your-container-registry>/wisecow-app:latest
-         - name: Deploy to Kubernetes
-           run: kubectl apply -f wisecow-deployment.yaml
-           env:
-             KUBECONFIG: ${{ secrets.KUBE_CONFIG_DATA }}
+             context: .
+             push: true
+             tags: your-dockerhub-username/wisecow-app:latest
+     
+         - name: Deploy to kubernates
+           uses: imranismail/setup-kubectl@v1
+           with:
+             kubectl_version: 'latest'
+             kubeconfig: ${{ secrets.KUBE_CONGIG }}
+     
+           run |
+             kubectl apply -f deployment.yaml
+             kubectl apply -f service.yaml
      ```
    - Configure Docker and Kubernetes secrets in the GitHub repository settings.
 
 ## TLS Implementation
 
 1. **Generate TLS Certificates**:
-   - Use tools like Let's Encrypt to generate certificates.
+   - Use a Kubernetes Ingress Controller (like NGINX) for managing TLS.
+   - Set up a certificate using Let's Encrypt or self-signed certificates.
+   - Update the Ingress resource to route traffic and enable TLS.
 2. **Configure TLS in Kubernetes Ingress**:
-   - Create an Ingress resource for TLS termination.
-   - Update `wisecow-service.yaml` to use NodePort or ClusterIP type.
-   - Configure Ingress rules for secure communication.
+   - git add .
+   - git commit -m "Initial setup"
+   - git push origin main
+
